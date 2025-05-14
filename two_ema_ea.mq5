@@ -9,6 +9,7 @@
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
+#include <Trade/Trade.mqh>
 
 //--- input parameters
 input uint stopLoss = 12;              // Stop Loss
@@ -30,6 +31,8 @@ uint sLoss, tProfit, pMove;
 int fmaPeriod;
 int smaPeriod;
 uint totalBars;
+
+CTrade trade;
 
 int OnInit()
   {
@@ -84,24 +87,35 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
-   
+      /*
+       * The number of bars of a corresponding
+       * symbol and period, available in history
+       */
+      int bars = iBars(NULL, 0);
+      if(totalBars != bars)
+      {
+         totalBars = bars;
+         if(CopyBuffer(fmaHandle, 0, 1, 1, fmaVal) < 0 || CopyBuffer(smaHandle, 0, 1, 1, smaVal) < 0)
+         {
+            Alert("Error copying Moving Average indicators Buffers - errors: ", GetLastError(), "!!");
+            return;
+         }
+         // check for open position
+         if(PositionSelect(_Symbol) == false)
+         {
+            double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+            double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+         
+         
+            if(fmaVal[0] > smaVal[0] && fmaVal[0] < smaVal[0]+pMove*_Point)
+            {
+               trade.Buy(lotSize, _Symbol, ask, ask-sLoss*_Point, ask+tProfit*_Point);
+            }
+            else if(fmaVal[0] < smaVal[0] && smaVal[0] < fmaVal[0]+pMove*_Point)
+            {
+               trade.Sell(lotSize, _Symbol, bid, bid+sLoss*_Point, bid-tProfit*_Point);
+            }
+         }
+      }  
   }
-//+------------------------------------------------------------------+
-//| Trade function                                                   |
-//+------------------------------------------------------------------+
-void OnTrade()
-  {
-//---
-   
-  }
-//+------------------------------------------------------------------+
-//| TradeTransaction function                                        |
-//+------------------------------------------------------------------+
-void OnTradeTransaction(const MqlTradeTransaction& trans,
-                        const MqlTradeRequest& request,
-                        const MqlTradeResult& result)
-  {
-//---
-   
-  }
-//+------------------------------------------------------------------+
+ //+------------------------------------------------------------------+ 
